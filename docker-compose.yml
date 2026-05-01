@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  api-discovery:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY:-your-encryption-key-here}
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:///./data/api_discovery.db
+      - LOG_LEVEL=INFO
+      - BROWSER_HEADLESS=true
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: Redis Commander for Redis management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    profiles:
+      - tools
+
+volumes:
+  redis_data: 
